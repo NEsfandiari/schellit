@@ -1,0 +1,15 @@
+{
+    "name": "Schellit",
+    "description": "Meet People Across the Web",
+    "version": "1.0",
+    "manifest_version": 3,
+    "background": {
+        "service_worker": "background.js"
+    },
+    "permissions": ["storage", "activeTab", "tabs", "scripting"],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": "images/clock-tower.webp"
+    },
+    "icon": "images/clock-tower.webp"
+  }
