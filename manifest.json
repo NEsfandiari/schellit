@@ -1,15 +1,24 @@
 {
-    "name": "Schellit",
-    "description": "Meet People Across the Web",
-    "version": "1.0",
-    "manifest_version": 3,
-    "background": {
-        "service_worker": "background.js"
-    },
-    "permissions": ["storage", "activeTab", "tabs", "scripting"],
-    "action": {
-        "default_popup": "popup.html",
-        "default_icon": "images/clock-tower.webp"
-    },
-    "icon": "images/clock-tower.webp"
+  "name": "Schellit",
+  "description": "Meet People Across the Web",
+  "version": "1.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "tabs", "scripting", "identity"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "images/schellit.jpg"
+  },
+  "icons": {
+    "16": "images/schellit.jpg",
+    "48": "images/schellit.jpg",
+    "128": "images/schellit.jpg"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAh6uU7jSJY6o7RdJkdo4kYeKBBhgebqzJhqs23umyMjE6mXaZ7SK03f3P4NfMoizawCewHNXpIP7/E1EWZrOsXz2dIDC6kd7a+/LvWym4YiirNaIi6R2p+7QYF40I756EbYlGL9Y5AfWC629hoK066gRADt/Ju6zy+n2wZdam6eV5qgzMopDReNk5Bu5yohe+Sqb+ZbbhP5gHJSzF1bfP8u/BNvreSdklq31QbXE2aTV0AFbOq0iV2GVoWj1rYAWzf8U8pN1QE/R6N3s0v13QM7HvDQq18llivp0eeEnBdGVQN9rz5fbcLvbEx0HQAffJCaoBWSV3zdGiuEYOh2UiVwIDAQAB",
+  "oauth2": {
+    "client_id": "630857334346-h666h86ugqa5p25mogd30jl51n2ek371.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/contacts.readonly"]
   }
+}

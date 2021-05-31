@@ -6,7 +6,6 @@ setUrlBar();
 
 chrome.storage.sync.get('urls', ({ urls }) => {
   if (urls) {
-    console.log('urls', urls);
     for (let url of urls) {
       url = shrinkUrl(url);
       createUrl(url);
@@ -18,11 +17,12 @@ submit.addEventListener('click', async () => {
   const tab = await getCurrentTab();
   const cleanUrl = shrinkUrl(tab.url);
   chrome.storage.sync.get('urls', ({ urls }) => {
-    if (urls.includes(cleanUrl)) {
+    console.log(urls, 'urls');
+    if (urls && urls.includes(cleanUrl)) {
       alert('url already is being listened on');
       return;
     }
-    if (urls.length < 5) {
+    if (!urls || urls.length < 5) {
       const newUrls = urls ? [...urls, cleanUrl] : [cleanUrl];
       chrome.storage.sync.set({ urls: newUrls });
     } else {
