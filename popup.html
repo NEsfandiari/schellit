@@ -2,19 +2,22 @@
 <html>
   <head>
     <link rel="stylesheet" href="popup.css" />
-    <!-- <script src="https://www.gstatic.com/firebasejs/8.6.2/firebase-app.js"></script> -->
-    <script type="text/javascript" src="oauth.js"></script>
+    <script type="text/javascript" src="./firebase/firebase-app.js"></script>
+    <script type="text/javascript" src="./firebase/auth.js"></script>
+    <script type="text/javascript" src="./firebase/database.js"></script>
   </head>
   <body>
     <div class="container">
       <h2>Match on a Url</h2>
       <input id="urlBar" type="text" />
       <button id="submit">Submit</button>
-      <h3>Currently Listening On</h3>
-      <div id="urlList"></div>
+      <div class="hidden urlList-container">
+        <h3>Currently Listening On</h3>
+        <div id="urlList"></div>
+      </div>
+      <button id="signup">Sign Up</button>
+      <button class="hidden" id="logout">Logout</button>
     </div>
-    <button>FriendBlock Contacts</button>
-    <div id="friendDiv"></div>
     <script src="popup.js"></script>
   </body>
 </html>
