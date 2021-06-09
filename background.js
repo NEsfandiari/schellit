@@ -30,6 +30,8 @@ chrome.identity.onSignInChanged.addListener((thing) => {
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   const { message } = request;
+
+  // NEW USER
   if (message === 'store user') {
     const { user } = request;
     db.ref()
@@ -46,13 +48,32 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
       });
   }
+
+  // NEW URL
   if (message === 'store url') {
-    console.log(request);
-    const { user, urls } = request;
-    db.ref(`users/${user.id}`).set({
-      email: user.email,
-      urls: urls,
-    });
+    const { user, newUrl, urls } = request;
+    db.ref()
+      .child('urls')
+      .get()
+      .then((snapshot) => {
+        const { matched_urls, unmatched_urls } = snapshot;
+        console.log(snapshot);
+        if (!(newUrl in matched_urls.values())) {
+          if (newUrl in unmatched_urls.values()) {
+            sendResponse({ message: 'its a match!' });
+          } else {
+            const updates = {};
+            updates[`users/${user.id}`] = {
+              email: user.email,
+              urls: urls,
+            };
+            updates[`urls/unmatched_urls/${snapshot.length}`] = newUrl;
+            db.ref().update(updates);
+          }
+        } else {
+          sendResponse({ message: 'already matched' });
+        }
+      });
   }
   sendResponse({ greeting: 'farewell' });
 });
