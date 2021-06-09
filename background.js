@@ -28,7 +28,7 @@ chrome.identity.onSignInChanged.addListener((thing) => {
   console.log(thing);
 });
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   const { message } = request;
 
   // NEW USER
@@ -52,28 +52,24 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   // NEW URL
   if (message === 'store url') {
     const { user, newUrl, urls } = request;
-    db.ref()
-      .child('urls')
-      .get()
-      .then((snapshot) => {
-        const { matched_urls, unmatched_urls } = snapshot;
-        console.log(snapshot);
-        if (!(newUrl in matched_urls.values())) {
-          if (newUrl in unmatched_urls.values()) {
-            sendResponse({ message: 'its a match!' });
-          } else {
-            const updates = {};
-            updates[`users/${user.id}`] = {
-              email: user.email,
-              urls: urls,
-            };
-            updates[`urls/unmatched_urls/${snapshot.length}`] = newUrl;
-            db.ref().update(updates);
-          }
-        } else {
-          sendResponse({ message: 'already matched' });
-        }
-      });
+    const { matched_urls, unmatched_urls } = (
+      await db.ref('/urls').get()
+    ).val();
+    console.log(matched_urls, unmatched_urls);
+    if (matched_urls.includes(newUrl)) {
+      sendResponse({ message: 'already matched' });
+    } else {
+      if (unmatched_urls.includes(newUrl)) {
+        sendResponse({ message: 'its a match!' });
+      } else {
+        const updates = {};
+        updates[`users/${user.id}`] = {
+          email: user.email,
+          urls: urls,
+        };
+        updates[`urls/unmatched_urls/${unmatched_urls.length}`] = newUrl;
+        db.ref().update(updates);
+      }
+    }
   }
-  sendResponse({ greeting: 'farewell' });
 });
