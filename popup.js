@@ -7,6 +7,7 @@ const logout = document.querySelector('#logout');
 
 setUrlBar();
 chrome.identity.getProfileUserInfo((user) => {
+  console.log('hi');
   if (user.email) {
     signUp.classList.toggle('hidden');
     logout.classList.toggle('hidden');
