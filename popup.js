@@ -49,10 +49,9 @@ async function onUrlSubmit() {
     if (urls && urls.includes(cleanUrl)) {
       alert('url already is being listened on');
     } else if (urls.length >= 5) {
-      alert('listening to the max of 5 urls. Trying deleting one first');
+      alert('listening to the max of 5 urls: try deleting one first');
     } else {
       const newUrls = urls ? [...urls, cleanUrl] : [cleanUrl];
-      chrome.storage.sync.set({ urls: newUrls });
       chrome.identity.getProfileUserInfo((user) => {
         chrome.runtime.sendMessage(
           {
@@ -64,9 +63,12 @@ async function onUrlSubmit() {
           (res) => {
             if (res.message === 'already matched') {
               alert('this url is no longer available to be used');
+            } else if (res.message === `added url ${cleanUrl} to the db`) {
+              chrome.storage.sync.set({ urls: newUrls });
               createUrl(cleanUrl);
             } else {
               console.log(res.message);
+              alert(res.message);
             }
           }
         );
@@ -78,8 +80,16 @@ async function onUrlSubmit() {
 function onClose(e) {
   const urlToDelete = e.target.previousSibling.innerText;
   chrome.storage.sync.get('urls', ({ urls }) => {
-    const newUrls = urls.filter((url) => url != urlToDelete);
-    chrome.storage.sync.set({ urls: newUrls });
+    const filteredUrls = urls.filter((url) => url != urlToDelete);
+    chrome.storage.sync.set({ urls: filteredUrls });
+    chrome.identity.getProfileUserInfo((user) => {
+      chrome.runtime.sendMessage({
+        message: 'delete url',
+        urlToDelete,
+        filteredUrls,
+        user,
+      });
+    });
   });
   const urlEl = e.target.parentNode;
   urlEl.remove();

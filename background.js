@@ -28,7 +28,7 @@ chrome.identity.onSignInChanged.addListener((thing) => {
   console.log(thing);
 });
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const { message } = request;
 
   // NEW USER
@@ -52,24 +52,52 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   // NEW URL
   if (message === 'store url') {
     const { user, newUrl, urls } = request;
-    const { matched_urls, unmatched_urls } = (
-      await db.ref('/urls').get()
-    ).val();
-    console.log(matched_urls, unmatched_urls);
-    if (matched_urls.includes(newUrl)) {
-      sendResponse({ message: 'already matched' });
-    } else {
-      if (unmatched_urls.includes(newUrl)) {
-        sendResponse({ message: 'its a match!' });
-      } else {
-        const updates = {};
-        updates[`users/${user.id}`] = {
-          email: user.email,
-          urls: urls,
-        };
-        updates[`urls/unmatched_urls/${unmatched_urls.length}`] = newUrl;
-        db.ref().update(updates);
-      }
-    }
+    console.log('starting request', new Date().getTime());
+    db.ref('/urls')
+      .get()
+      .then((snapshot) => {
+        const { matched_urls, unmatched_urls } = snapshot.val();
+        console.log(matched_urls, unmatched_urls);
+        const hashableUrl = createHashableUrl(newUrl);
+        if (hashableUrl in matched_urls) {
+          sendResponse({ message: 'already matched' });
+        } else {
+          const updates = {};
+          if (hashableUrl in unmatched_urls) {
+            updates[`urls/unmatched_urls/${hashableUrl}`] = null;
+            updates[`urls/matched_urls/${hashableUrl}`] = [
+              unmatched_urls[hashableUrl],
+              user.email,
+            ];
+            db.ref().update(updates);
+            sendResponse({ message: 'its a match!' });
+          } else {
+            updates[`users/${user.id}`] = {
+              email: user.email,
+              urls: urls,
+            };
+            updates[`urls/unmatched_urls/${hashableUrl}`] = user.email;
+            db.ref().update(updates);
+            sendResponse({ message: `added url ${newUrl} to the db` });
+          }
+        }
+      });
+    return true;
+  }
+
+  // REMOVE Unmatched URL
+  if (message === 'delete url') {
+    const { urlToDelete, user, filteredUrls } = request;
+    const hashableUrl = createHashableUrl(urlToDelete);
+    const updates = {};
+    updates[`urls/unmatched_urls/${hashableUrl}`] = null;
+    updates[`users/${user.id}/urls`] = filteredUrls;
+    db.ref().update(updates);
   }
 });
+
+function createHashableUrl(url) {
+  url = url.replaceAll('.', '_');
+  url = url.replaceAll('/', '\\');
+  return url;
+}
