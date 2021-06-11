@@ -30,23 +30,14 @@ chrome.identity.onSignInChanged.addListener((thing) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const { message } = request;
-
   // NEW USER
   if (message === 'store user') {
     const { user } = request;
-    db.ref()
-      .child('users')
-      .child(user.id)
-      .get()
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          console.log(snapshot.val(), 'val exists');
-        } else {
-          db.ref(`users/${user.id}`).set({
-            email: user.email,
-          });
-        }
-      });
+    console.log('NEW USER:', user);
+    db.ref(`users/${user.id}`).set({
+      email: user.email,
+      id: String(user.id),
+    });
   }
 
   // NEW URL
@@ -55,31 +46,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('starting request', new Date().getTime());
     db.ref('/urls')
       .get()
-      .then((snapshot) => {
+      .then(async (snapshot) => {
         const { matched_urls, unmatched_urls } = snapshot.val();
-        console.log(matched_urls, unmatched_urls);
         const hashableUrl = createHashableUrl(newUrl);
+        console.log(unmatched_urls, hashableUrl, newUrl);
+        console.log(matched_urls, unmatched_urls);
+
+        const updates = {};
         if (hashableUrl in matched_urls) {
           sendResponse({ message: 'already matched' });
+        } else if (hashableUrl in unmatched_urls) {
+          const user2 = (
+            await db.ref(`/users/${unmatched_urls[hashableUrl]}`).get()
+          ).val();
+          updates[`urls/unmatched_urls/${hashableUrl}`] = null;
+          updates[`urls/matched_urls/${hashableUrl}`] = [
+            user2.email,
+            user.email,
+          ];
+          db.ref().update(updates);
+          updateProfileMatches(user, user2, newUrl);
+          sendResponse({ message: 'its a match!' });
         } else {
-          const updates = {};
-          if (hashableUrl in unmatched_urls) {
-            updates[`urls/unmatched_urls/${hashableUrl}`] = null;
-            updates[`urls/matched_urls/${hashableUrl}`] = [
-              unmatched_urls[hashableUrl],
-              user.email,
-            ];
-            db.ref().update(updates);
-            sendResponse({ message: 'its a match!' });
-          } else {
-            updates[`users/${user.id}`] = {
-              email: user.email,
-              urls: urls,
-            };
-            updates[`urls/unmatched_urls/${hashableUrl}`] = user.email;
-            db.ref().update(updates);
-            sendResponse({ message: `added url ${newUrl} to the db` });
-          }
+          updates[`users/${user.id}/urls`] = urls;
+          updates[`users/${user.id}/email`] = user.email;
+          updates[`urls/unmatched_urls/${hashableUrl}`] = user.id;
+          db.ref().update(updates);
+          sendResponse({ message: `added url ${newUrl} to the db` });
         }
       });
     return true;
@@ -100,4 +93,24 @@ function createHashableUrl(url) {
   url = url.replaceAll('.', '_');
   url = url.replaceAll('/', '\\');
   return url;
+}
+
+function updateProfileMatches(user1, user2, url) {
+  const date = new Date().toDateString();
+  console.log(user1, user2);
+
+  const matchListRef1 = db.ref(`users/${user1.id}/matches`);
+  const newMatchRef1 = matchListRef1.push();
+  newMatchRef1.set({
+    match: user2.email,
+    url,
+    date,
+  });
+  const matchListRef2 = db.ref(`users/${user2.id}/matches`);
+  const newMatchRef2 = matchListRef2.push();
+  newMatchRef2.set({
+    match: user1.email,
+    url,
+    date,
+  });
 }
