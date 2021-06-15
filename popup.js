@@ -30,12 +30,17 @@ function onSignup() {
 }
 
 function onLogout() {
-  chrome.identity.getAuthToken({ interactive: false }, function (token) {
-    var url = 'https://accounts.google.com/o/oauth2/revoke?token=' + token;
-    window.fetch(url);
-    chrome.identity.removeCachedAuthToken({ token: token }, function () {
-      alert('removed');
-    });
+  chrome.identity.getAuthToken({ interactive: false }, async function (token) {
+    console.log(token);
+    if (token) {
+      var url = 'https://accounts.google.com/o/oauth2/revoke?token=' + token;
+      window.fetch(url);
+      chrome.identity.removeCachedAuthToken({ token: token }, function () {
+        alert('removed');
+      });
+    } else {
+      console.log(await getCurrentUser());
+    }
   });
 }
 
@@ -103,6 +108,22 @@ async function setUrlBar() {
 }
 async function populateUrls() {
   const user = await getCurrentUser();
+  chrome.runtime.sendMessage(
+    { message: 'check matches', userId: user.id },
+    (res) => {
+      const { matches, filteredUrls } = res;
+      console.log(res);
+      chrome.storage.sync.set({ urls: filteredUrls });
+      if (matches.length > 0) {
+        let str = 'Congrats, You have Matched With ';
+        res.matches.forEach((match) => {
+          str += `${match.email} on ${match.url}, `;
+        });
+        str = str.slice(0, str.length - 2);
+        alert(str);
+      }
+    }
+  );
   if (user.email) {
     signUp.classList.toggle('hidden');
     logout.classList.toggle('hidden');

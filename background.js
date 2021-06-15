@@ -87,6 +87,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     updates[`users/${user.id}/urls`] = filteredUrls;
     db.ref().update(updates);
   }
+
+  if (message === 'check matches') {
+    const { userId } = request;
+    db.ref(`/users/${userId}`)
+      .get()
+      .then((snapshot) => {
+        const { matches, urls } = snapshot.val();
+        const newMatches = [];
+        // console.log(matches, Object.values(matches));
+        for (const match of Object.values(matches)) {
+          if (urls.includes(match.url)) {
+            newMatches.push(match);
+          }
+        }
+        const filteredUrls = urls.filter(
+          (url) => !newMatches.some((match) => match.url === url)
+        );
+        const updates = {};
+        updates[`users/${userId}/urls`] = filteredUrls;
+        db.ref().update(updates);
+        sendResponse({ matches: newMatches, filteredUrls });
+      });
+    return true;
+  }
 });
 
 function createHashableUrl(url) {
@@ -102,14 +126,14 @@ function updateProfileMatches(user1, user2, url) {
   const matchListRef1 = db.ref(`users/${user1.id}/matches`);
   const newMatchRef1 = matchListRef1.push();
   newMatchRef1.set({
-    match: user2.email,
+    email: user2.email,
     url,
     date,
   });
   const matchListRef2 = db.ref(`users/${user2.id}/matches`);
   const newMatchRef2 = matchListRef2.push();
   newMatchRef2.set({
-    match: user1.email,
+    email: user1.email,
     url,
     date,
   });
