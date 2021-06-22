@@ -112,24 +112,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  let previous = undefined;
   if (message === 'add active tab') {
     const { user, tabUrl } = request;
+    if (previous) {
+      db.ref(`/urls/active/${previous.url}/${previous.ref}`).remove();
+    }
     const hashableUrl = createHashableUrl(tabUrl);
     const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
     activeUrlRef.get().then((snapshot) => {
       const data = snapshot.val();
-      console.log(data);
-      if (!data || !data.includes(user)) {
+      if (!data || !Object.values(data).some((usr) => usr.id === user.id)) {
         const newActiveUrlRef = activeUrlRef.push();
         newActiveUrlRef.set({
           ...user,
         });
+        previous = { url: hashableUrl, ref: newActiveUrlRef };
+        sendResponse({
+          matchAvailable: data && Object.keys(data).length > 0,
+        });
+      } else {
+        sendResponse({ message: 'user already active on Url' });
       }
     });
-  }
-
-  if (message === 'remove active tab') {
-    const { user, tabUrl } = request;
+    return true;
   }
 });
 
