@@ -39,5 +39,9 @@ img {
 }
 
 .hidden {
-  opacity: 0;
+  display: none;
+}
+
+.faded {
+  opacity: 0.5;
 }

@@ -50,7 +50,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { matched_urls, unmatched_urls } = snapshot.val();
         const hashableUrl = createHashableUrl(newUrl);
         console.log(unmatched_urls, hashableUrl, newUrl);
-        console.log(matched_urls, unmatched_urls);
 
         const updates = {};
         if (hashableUrl in matched_urls) {
@@ -88,6 +87,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     db.ref().update(updates);
   }
 
+  // CHECK FOR MATCHES ON LOGIN
   if (message === 'check matches') {
     const { userId } = request;
     db.ref(`/users/${userId}`)
@@ -110,6 +110,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ matches: newMatches, filteredUrls });
       });
     return true;
+  }
+
+  if (message === 'add active tab') {
+    const { user, tabUrl } = request;
+    const hashableUrl = createHashableUrl(tabUrl);
+    const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
+    activeUrlRef.get().then((snapshot) => {
+      const data = snapshot.val();
+      console.log(data);
+      if (!data || !data.includes(user)) {
+        const newActiveUrlRef = activeUrlRef.push();
+        newActiveUrlRef.set({
+          ...user,
+        });
+      }
+    });
+  }
+
+  if (message === 'remove active tab') {
+    const { user, tabUrl } = request;
   }
 });
 
@@ -138,3 +158,7 @@ function updateProfileMatches(user1, user2, url) {
     date,
   });
 }
+
+db.ref('urls/active/').on('child_added', (data) => {
+  chrome.storage.sync.get('urls', ({ urls }) => {});
+});

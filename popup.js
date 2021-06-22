@@ -5,8 +5,37 @@ const urlListContainer = document.querySelector('.urlList-container');
 const signUp = document.querySelector('#signup');
 const logout = document.querySelector('#logout');
 
+const ACTIVE_URL_BLACKLIST = new Set(['']);
+
 setUrlBar();
 populateUrls();
+
+// chrome.tabs.onHighlightedChanged.addListener((HighlightInfo) => {
+//   console.log(HighlightInfo);
+// });
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  const user = await getCurrentUser();
+  if (changeInfo?.status === 'complete' && !ACTIVE_URL_BLACKLIST.has(tab.url)) {
+    chrome.runtime.sendMessage({
+      message: 'add active tab',
+      tabUrl: tab.url,
+      user,
+    });
+  }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  const user = await getCurrentUser();
+  const [tab] = await chrome.tabs.get(tabId);
+  console.log(tab);
+  chrome.runtime.sendMessage({
+    message: 'remove active tab',
+    tabUrl: tab.url,
+    user,
+  });
+  console.log(tabId, removeInfo);
+});
 
 submit.addEventListener('click', onUrlSubmit);
 signUp.addEventListener('click', onSignup);
