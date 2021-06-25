@@ -1,3 +1,4 @@
+import { shrinkUrl, getCurrentTab, getCurrentUser } from './util.js';
 const submit = document.querySelector('#submit');
 const urlBar = document.querySelector('#urlBar');
 const urlList = document.querySelector('#urlList');
@@ -26,7 +27,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         user,
       },
       (data) => {
-        if (data.matchAvailable) {
+        if (data?.matchAvailable) {
           syncMatch.classList.toggle('faded');
         }
       }
@@ -132,6 +133,7 @@ async function setUrlBar() {
   const url = shrinkUrl(tab.url);
   urlBar.setAttribute('value', url);
 }
+
 async function populateUrls() {
   const user = await getCurrentUser();
   chrome.runtime.sendMessage(
@@ -178,31 +180,4 @@ function createUrl(url) {
   urlContainer.appendChild(urlText);
   urlContainer.appendChild(closeIcon);
   urlList.appendChild(urlContainer);
-}
-
-function shrinkUrl(url) {
-  const queryParamIdx = url.search('\\?');
-  if (queryParamIdx != -1) {
-    url = url.slice(0, queryParamIdx);
-  }
-
-  const protocolIdx = url.match(/^https?:\/\/w{0,3}\.?/);
-  if (protocolIdx != null) {
-    url = url.slice(protocolIdx[0].length);
-  }
-  return url;
-}
-
-async function getCurrentTab() {
-  let queryOptions = { active: true, currentWindow: true };
-  let [tab] = await chrome.tabs.query(queryOptions);
-  return tab;
-}
-
-function getCurrentUser() {
-  return new Promise((res) => {
-    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (user) => {
-      res(user);
-    });
-  });
 }

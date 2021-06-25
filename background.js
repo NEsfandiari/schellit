@@ -19,6 +19,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+let previousActive = undefined;
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('From the Service Worker');
@@ -112,11 +113,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  let previous = undefined;
   if (message === 'add active tab') {
     const { user, tabUrl } = request;
-    if (previous) {
-      db.ref(`/urls/active/${previous.url}/${previous.ref}`).remove();
+    if (previousActive) {
+      db.ref(
+        `/urls/active/${previousActive.url}/${previousActive.ref}`
+      ).remove();
     }
     const hashableUrl = createHashableUrl(tabUrl);
     const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
@@ -127,11 +129,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         newActiveUrlRef.set({
           ...user,
         });
-        previous = { url: hashableUrl, ref: newActiveUrlRef };
+        previousActive = { url: hashableUrl, ref: newActiveUrlRef.key };
         sendResponse({
           matchAvailable: data && Object.keys(data).length > 0,
         });
       } else {
+        previousActive = undefined;
         sendResponse({ message: 'user already active on Url' });
       }
     });
