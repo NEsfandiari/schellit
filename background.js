@@ -19,6 +19,11 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+const ACTIVE_URL_BLACKLIST = new Set([
+  'chrome://newtab/',
+  'chrome://extensions/',
+]);
 let previousActive = undefined;
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -29,7 +34,7 @@ chrome.identity.onSignInChanged.addListener((thing) => {
   console.log(thing);
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   const { message } = request;
   // NEW USER
   if (message === 'store user') {
@@ -113,31 +118,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (message === 'add active tab') {
-    const { user, tabUrl } = request;
-    if (previousActive) {
-      db.ref(
-        `/urls/active/${previousActive.url}/${previousActive.ref}`
-      ).remove();
-    }
-    const hashableUrl = createHashableUrl(tabUrl);
-    const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
-    activeUrlRef.get().then((snapshot) => {
-      const data = snapshot.val();
-      if (!data || !Object.values(data).some((usr) => usr.id === user.id)) {
-        const newActiveUrlRef = activeUrlRef.push();
-        newActiveUrlRef.set({
-          ...user,
-        });
-        previousActive = { url: hashableUrl, ref: newActiveUrlRef.key };
-        sendResponse({
-          matchAvailable: data && Object.keys(data).length > 0,
-        });
-      } else {
-        previousActive = undefined;
-        sendResponse({ message: 'user already active on Url' });
+  // Check for if the current tab has a match available
+  if (message === 'check active tab') {
+    const { tab, user, activeUrl } = request;
+    if (tab.active && !ACTIVE_URL_BLACKLIST.has(activeUrl)) {
+      if (previousActive) {
+        db.ref(
+          `/urls/active/${previousActive.hashableUrl}/${previousActive.ref}`
+        ).remove();
       }
-    });
+      const hashableUrl = createHashableUrl(activeUrl);
+      const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
+      activeUrlRef.get().then((snapshot) => {
+        const data = snapshot.val();
+        if (!data || !Object.values(data).some((usr) => usr.id === user.id)) {
+          const newActiveUrlRef = activeUrlRef.push();
+          newActiveUrlRef.set({
+            ...user,
+          });
+          previousActive = {
+            hashableUrl,
+            url: tab.url,
+            ref: newActiveUrlRef.key,
+            matchAvailable: data && Object.keys(data).length > 0,
+          };
+          sendResponse({
+            matchAvailable: previousActive?.matchAvailable,
+          });
+        } else {
+          previousActive = undefined;
+          sendResponse({ matchAvailable: false });
+        }
+      });
+    }
     return true;
   }
 });
@@ -169,5 +182,18 @@ function updateProfileMatches(user1, user2, url) {
 }
 
 db.ref('urls/active/').on('child_added', (data) => {
-  chrome.storage.sync.get('urls', ({ urls }) => {});
+  if (data.key === previousActive?.hashableUrl) {
+    chrome.runtime.sendMessage({ message: 'sync available' });
+  }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const [tab] = await chrome.tabs.get(tabId);
+  console.log(tab, tabId);
+  if (tab.url === previousActive.url) {
+    db.ref(
+      `/urls/active/${previousActive.hashableUrl}/${previousActive.ref}`
+    ).remove();
+    previousActive = undefined;
+  }
 });

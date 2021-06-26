@@ -7,33 +7,8 @@ const signUp = document.querySelector('#signup');
 const logout = document.querySelector('#logout');
 const syncMatch = document.querySelector('#syncMatch');
 
-const ACTIVE_URL_BLACKLIST = new Set(['chrome://newtab/']);
-
 setUrlBar();
 populateUrls();
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  const user = await getCurrentUser();
-  const activeUrl = shrinkUrl(tab.url);
-  if (
-    changeInfo?.status === 'complete' &&
-    tab.active &&
-    !ACTIVE_URL_BLACKLIST.has(activeUrl)
-  ) {
-    chrome.runtime.sendMessage(
-      {
-        message: 'add active tab',
-        tabUrl: activeUrl,
-        user,
-      },
-      (data) => {
-        if (data?.matchAvailable) {
-          syncMatch.classList.toggle('faded');
-        }
-      }
-    );
-  }
-});
 
 submit.addEventListener('click', onUrlSubmit);
 signUp.addEventListener('click', onSignup);
@@ -129,9 +104,20 @@ function onClose(e) {
 }
 
 async function setUrlBar() {
+  console.log('hiiii');
   const tab = await getCurrentTab();
-  const url = shrinkUrl(tab.url);
-  urlBar.setAttribute('value', url);
+  const shortenedUrl = shrinkUrl(tab.url);
+  const user = await getCurrentUser();
+  urlBar.setAttribute('value', shortenedUrl);
+  chrome.runtime.sendMessage(
+    { message: 'check active tab', tab, user, activeUrl: shortenedUrl },
+    (data) => {
+      console.log(data);
+      if (data && data.matchAvailable) {
+        syncMatch.classList.toggle('faded');
+      }
+    }
+  );
 }
 
 async function populateUrls() {
@@ -181,3 +167,10 @@ function createUrl(url) {
   urlContainer.appendChild(closeIcon);
   urlList.appendChild(urlContainer);
 }
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const { message } = request;
+  if (message === 'sync available' && syncMatch.classList.contains('faded')) {
+    syncMatch.classList.toggle('faded');
+  }
+});
