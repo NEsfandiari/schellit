@@ -55,7 +55,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       .then(async (snapshot) => {
         const { matched_urls, unmatched_urls } = snapshot.val();
         const hashableUrl = createHashableUrl(newUrl);
-        console.log(unmatched_urls, hashableUrl, newUrl);
 
         const updates = {};
         if (hashableUrl in matched_urls) {
@@ -96,15 +95,17 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   // CHECK FOR MATCHES ON LOGIN
   if (message === 'check matches') {
     const { userId } = request;
+    console.log('during message');
     db.ref(`/users/${userId}`)
       .get()
       .then((snapshot) => {
         const { matches, urls } = snapshot.val();
         const newMatches = [];
-        // console.log(matches, Object.values(matches));
-        for (const match of Object.values(matches)) {
-          if (urls.includes(match.url)) {
-            newMatches.push(match);
+        if (matches) {
+          for (const match of Object.values(matches)) {
+            if (urls.includes(match.url)) {
+              newMatches.push(match);
+            }
           }
         }
         const filteredUrls = urls.filter(
@@ -113,8 +114,10 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         const updates = {};
         updates[`users/${userId}/urls`] = filteredUrls;
         db.ref().update(updates);
+        console.log('sendResponse');
         sendResponse({ matches: newMatches, filteredUrls });
       });
+    console.log('during message2');
     return true;
   }
 
@@ -187,13 +190,20 @@ db.ref('urls/active/').on('child_added', (data) => {
   }
 });
 
+const URLS = {};
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+  if (changeInfo.url) {
+    URLS[tabId] = changeInfo.url;
+  }
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId) => {
-  const [tab] = await chrome.tabs.get(tabId);
-  console.log(tab, tabId);
-  if (tab.url === previousActive.url) {
+  const tabURL = URLS[tabId];
+  if (tabURL === previousActive?.url) {
     db.ref(
       `/urls/active/${previousActive.hashableUrl}/${previousActive.ref}`
     ).remove();
     previousActive = undefined;
+    delete URLS[tabId];
   }
 });

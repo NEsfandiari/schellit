@@ -33,7 +33,7 @@ function onSignup() {
 
 function onLogout() {
   chrome.identity.getAuthToken({ interactive: false }, async function (token) {
-    console.log(token);
+    console.log('LOGOUT', token);
     if (token) {
       var url = 'https://accounts.google.com/o/oauth2/revoke?token=' + token;
       window.fetch(url);
@@ -41,7 +41,7 @@ function onLogout() {
         alert('removed');
       });
     } else {
-      console.log(await getCurrentUser());
+      console.log('No userToken but...', await getCurrentUser());
     }
   });
 }
@@ -104,7 +104,6 @@ function onClose(e) {
 }
 
 async function setUrlBar() {
-  console.log('hiiii');
   const tab = await getCurrentTab();
   const shortenedUrl = shrinkUrl(tab.url);
   const user = await getCurrentUser();
@@ -112,6 +111,7 @@ async function setUrlBar() {
   chrome.runtime.sendMessage(
     { message: 'check active tab', tab, user, activeUrl: shortenedUrl },
     (data) => {
+      console.log('hiiii');
       console.log(data);
       if (data && data.matchAvailable) {
         syncMatch.classList.toggle('faded');
@@ -126,7 +126,6 @@ async function populateUrls() {
     { message: 'check matches', userId: user.id },
     (res) => {
       const { matches, filteredUrls } = res;
-      console.log(res);
       chrome.storage.sync.set({ urls: filteredUrls });
       if (matches.length > 0) {
         let str = 'Congrats, You have Matched With ';
