@@ -34,8 +34,9 @@ chrome.identity.onSignInChanged.addListener((thing) => {
   console.log(thing);
 });
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const { message } = request;
+
   // NEW USER
   if (message === 'store user') {
     const { user } = request;
@@ -95,7 +96,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   // CHECK FOR MATCHES ON LOGIN
   if (message === 'check matches') {
     const { userId } = request;
-    console.log('during message');
     db.ref(`/users/${userId}`)
       .get()
       .then((snapshot) => {
@@ -114,10 +114,8 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         const updates = {};
         updates[`users/${userId}/urls`] = filteredUrls;
         db.ref().update(updates);
-        console.log('sendResponse');
         sendResponse({ matches: newMatches, filteredUrls });
       });
-    console.log('during message2');
     return true;
   }
 

@@ -111,8 +111,6 @@ async function setUrlBar() {
   chrome.runtime.sendMessage(
     { message: 'check active tab', tab, user, activeUrl: shortenedUrl },
     (data) => {
-      console.log('hiiii');
-      console.log(data);
       if (data && data.matchAvailable) {
         syncMatch.classList.toggle('faded');
       }
@@ -125,31 +123,31 @@ async function populateUrls() {
   chrome.runtime.sendMessage(
     { message: 'check matches', userId: user.id },
     (res) => {
-      const { matches, filteredUrls } = res;
-      chrome.storage.sync.set({ urls: filteredUrls });
-      if (matches.length > 0) {
-        let str = 'Congrats, You have Matched With ';
-        res.matches.forEach((match) => {
-          str += `${match.email} on ${match.url}, `;
-        });
-        str = str.slice(0, str.length - 2);
-        alert(str);
+      if (res) {
+        const { matches, filteredUrls } = res;
+        chrome.storage.sync.set({ urls: filteredUrls });
+        if (matches.length > 0) {
+          let str = 'Congrats, You have Matched With ';
+          res.matches.forEach((match) => {
+            str += `${match.email} on ${match.url}, `;
+          });
+          str = str.slice(0, str.length - 2);
+          alert(str);
+        }
+        if (user.email) {
+          signUp.classList.toggle('hidden');
+          logout.classList.toggle('hidden');
+          urlListContainer.classList.toggle('hidden');
+          if (filteredUrls) {
+            for (let url of filteredUrls) {
+              url = shrinkUrl(url);
+              createUrl(url);
+            }
+          }
+        }
       }
     }
   );
-  if (user.email) {
-    signUp.classList.toggle('hidden');
-    logout.classList.toggle('hidden');
-    urlListContainer.classList.toggle('hidden');
-    chrome.storage.sync.get('urls', ({ urls }) => {
-      if (urls) {
-        for (let url of urls) {
-          url = shrinkUrl(url);
-          createUrl(url);
-        }
-      }
-    });
-  }
 }
 
 function createUrl(url) {
