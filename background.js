@@ -166,7 +166,7 @@ function createHashableUrl(url) {
 
 function updateProfileMatches(user1, user2, url) {
   const date = new Date().toDateString();
-  console.log("NEW MATCH", {user1}, {user2);
+  console.log('NEW MATCH', { user1 }, { user2 });
 
   const matchListRef1 = db.ref(`users/${user1.id}/matches`);
   const newMatchRef1 = matchListRef1.push();
