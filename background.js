@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // NEW USER
   if (message === 'store user') {
     const { user } = request;
-    console.log('NEW USER:', user);
+    console.log('NEW USER:', { user });
     db.ref(`users/${user.id}`).set({
       email: user.email,
       id: String(user.id),
@@ -148,7 +148,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           });
         } else {
           previousActive = undefined;
-          sendResponse({ matchAvailable: false });
+          sendResponse({
+            matchAvailable: data && Object.keys(data).length > 0,
+          });
         }
       });
     }
@@ -164,7 +166,7 @@ function createHashableUrl(url) {
 
 function updateProfileMatches(user1, user2, url) {
   const date = new Date().toDateString();
-  console.log(user1, user2);
+  console.log("NEW MATCH", {user1}, {user2);
 
   const matchListRef1 = db.ref(`users/${user1.id}/matches`);
   const newMatchRef1 = matchListRef1.push();
@@ -197,11 +199,17 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const tabURL = URLS[tabId];
+  console.log(
+    'TAB REMOVED',
+    tabURL === previousActive?.url,
+    { previousActive },
+    { URLS }
+  );
   if (tabURL === previousActive?.url) {
     db.ref(
       `/urls/active/${previousActive.hashableUrl}/${previousActive.ref}`
     ).remove();
     previousActive = undefined;
-    delete URLS[tabId];
   }
+  delete URLS[tabId];
 });
