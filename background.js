@@ -108,9 +108,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
           }
         }
-        const filteredUrls = urls.filter(
-          (url) => !newMatches.some((match) => match.url === url)
-        );
+        const filteredUrls = urls
+          ? urls.filter((url) => !newMatches.some((match) => match.url === url))
+          : [];
         const updates = {};
         updates[`users/${userId}/urls`] = filteredUrls;
         db.ref().update(updates);
@@ -132,24 +132,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const activeUrlRef = db.ref(`/urls/active/${hashableUrl}`);
       activeUrlRef.get().then((snapshot) => {
         const data = snapshot.val();
-        if (!data || !Object.values(data).some((usr) => usr.id === user.id)) {
+        const userInActiveData =
+          data && Object.values(data).some((usr) => usr.id === user.id);
+        if (!data || !userInActiveData) {
           const newActiveUrlRef = activeUrlRef.push();
           newActiveUrlRef.set({
             ...user,
           });
+          const matchAvailable = data && Object.keys(data).length > 0;
           previousActive = {
             hashableUrl,
             url: tab.url,
             ref: newActiveUrlRef.key,
-            matchAvailable: data && Object.keys(data).length > 0,
+            matchAvailable,
           };
           sendResponse({
-            matchAvailable: previousActive?.matchAvailable,
+            matchAvailable,
           });
         } else {
           previousActive = undefined;
           sendResponse({
-            matchAvailable: data && Object.keys(data).length > 0,
+            matchAvailable:
+              data && userInActiveData
+                ? Object.keys(data).length > 1
+                : Object.keys(data).length > 0,
           });
         }
       });
