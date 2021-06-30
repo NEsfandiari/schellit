@@ -174,6 +174,21 @@ function onLogout() {
 function onSyncMatch() {
   if (!syncMatch.classList.contains('faded')) {
     console.log('WEB RTC Start');
+    const constraints = {
+      video: true,
+      audio: true,
+    };
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        console.log('Got MediaStream:', stream);
+        const videoElement = document.querySelector('#localVideo');
+        videoElement.classList.toggle('hidden');
+        videoElement.srcObject = stream;
+      })
+      .catch((error) => {
+        console.error('Error accessing media devices.', error);
+      });
   }
 }
 
