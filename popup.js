@@ -185,6 +185,13 @@ function onSyncMatch() {
         const videoElement = document.querySelector('#localVideo');
         videoElement.classList.toggle('hidden');
         videoElement.srcObject = stream;
+        const signalingChannel = new SignalingChannel(remoteClientId);
+        signalingChannel.addEventListener('message', (message) => {
+          // New message from remote client received
+        });
+
+        // Send an asynchronous message to the remote client
+        signalingChannel.send('Hello!');
       })
       .catch((error) => {
         console.error('Error accessing media devices.', error);
