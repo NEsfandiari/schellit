@@ -185,18 +185,34 @@ function onSyncMatch() {
         const videoElement = document.querySelector('#localVideo');
         videoElement.classList.toggle('hidden');
         videoElement.srcObject = stream;
-        const signalingChannel = new SignalingChannel(remoteClientId);
-        signalingChannel.addEventListener('message', (message) => {
-          // New message from remote client received
-        });
-
-        // Send an asynchronous message to the remote client
-        signalingChannel.send('Hello!');
       })
       .catch((error) => {
         console.error('Error accessing media devices.', error);
       });
   }
+}
+
+async function makeCall() {
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  const signalingChannel = new SignalingChannel(remoteClientId);
+  const configuration = {};
+  const peerConnection = new RTCPeerConnection(configuration);
+  signalingChannel.addEventListener('message', async (message) => {
+    if (message.answer) {
+      const remoteDesc = new RTCSessionDescription(message.answer);
+      await peerConnection.setRemoteDescription(remoteDesc);
+    }
+    if (message.offer) {
+      peerConnection.setRemoteDescription(
+        new RTCSessionDescription(message.offer)
+      );
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      signalingChannel.send({ answer: answer });
+    }
+  });
+  signalingChannel.send({ offer: offer });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
