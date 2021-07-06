@@ -2,7 +2,7 @@ import { shrinkUrl, getCurrentTab, getCurrentUser } from './util.js';
 const submit = document.querySelector('#submit');
 const urlBar = document.querySelector('#urlBar');
 const urlList = document.querySelector('#urlList');
-const urlListContainer = document.querySelector('.urlList-container');
+const urlListContainer = document.querySelector('.container-urlList');
 const signUp = document.querySelector('#signup');
 const logout = document.querySelector('#logout');
 const syncMatch = document.querySelector('#syncMatch');
@@ -68,7 +68,7 @@ function createUrl(url) {
   closeIcon.addEventListener('click', onClose);
 
   const urlContainer = document.createElement('div');
-  urlContainer.classList.add('url-container');
+  urlContainer.classList.add('container-url');
   urlContainer.appendChild(urlText);
   urlContainer.appendChild(closeIcon);
   urlList.appendChild(urlContainer);
@@ -181,10 +181,31 @@ function onSyncMatch() {
     navigator.mediaDevices
       .getUserMedia(constraints)
       .then((stream) => {
-        console.log('Got MediaStream:', stream);
-        const videoElement = document.querySelector('#localVideo');
-        videoElement.classList.toggle('hidden');
-        videoElement.srcObject = stream;
+        console.log(
+          'Got MediaStream:',
+          stream,
+          '\n',
+          'Tracks',
+          stream.getTracks()
+        );
+        const localVideoEl = document.querySelector('#localVideo');
+        localVideoEl.classList.toggle('hidden');
+        const signalingChannel = new SignalingChannel();
+
+        const configuration = {};
+        const pc = new RTCPeerConnection(configuration);
+        for (const track of stream.getTracks()) {
+          pc.addTrack(track, stream);
+        }
+        pc.createOffer().then((offer) => {
+          return pc.setLocalDescription(offer);
+        });
+        pc.ontrack = ({ track, streams }) => {
+          const remoteVideoEl = document.querySelector('#remoteVideo');
+          remoteVideoEl.srcObject = streams[0];
+        };
+
+        remoteVideoEl.srcObject = stream;
       })
       .catch((error) => {
         console.error('Error accessing media devices.', error);
@@ -192,23 +213,18 @@ function onSyncMatch() {
   }
 }
 
-async function makeCall() {
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  const signalingChannel = new SignalingChannel(remoteClientId);
-  const configuration = {};
-  const peerConnection = new RTCPeerConnection(configuration);
+async function makeCall(pc) {
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
   signalingChannel.addEventListener('message', async (message) => {
     if (message.answer) {
       const remoteDesc = new RTCSessionDescription(message.answer);
-      await peerConnection.setRemoteDescription(remoteDesc);
+      await pc.setRemoteDescription(remoteDesc);
     }
     if (message.offer) {
-      peerConnection.setRemoteDescription(
-        new RTCSessionDescription(message.offer)
-      );
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
+      pc.setRemoteDescription(new RTCSessionDescription(message.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
       signalingChannel.send({ answer: answer });
     }
   });

@@ -7,11 +7,11 @@
     <script type="text/javascript" src="./firebase/database.js"></script>
   </head>
   <body>
-    <div class="container">
+    <div class="container-main">
       <h2>Match on a Url</h2>
       <input id="urlBar" type="text" />
       <button id="submit">Submit</button>
-      <div class="hidden urlList-container">
+      <div class="hidden container-urlList">
         <h3>Currently Listening On</h3>
         <div id="urlList"></div>
       </div>
@@ -19,6 +19,7 @@
       <button class="faded" id="syncMatch">Match Now</button>
       <button class="hidden" id="logout">Logout</button>
     </div>
+    <div class="container-videos">
     <video
       id="localVideo"
       class="hidden"
@@ -26,6 +27,14 @@
       playsinline
       controls="false"
     ></video>
+    <video
+      id="remoteVideo"
+      class="hidden"
+      autoplay
+      controls
+      playsinline
+    ></video>
+    <div>
     <script src="popup.js" type="module"></script>
   </body>
 </html>
