@@ -162,6 +162,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true;
   }
+
+  if (message === 'join room') {
+    // async function makeCall(pc) {
+    //   await pc.setLocalDescription(offer);
+    //   signalingChannel.addEventListener('message', async (message) => {
+    //     if (message.answer) {
+    //       const remoteDesc = new RTCSessionDescription(message.answer);
+    //       await pc.setRemoteDescription(remoteDesc);
+    //     }
+    //     if (message.offer) {
+    //       pc.setRemoteDescription(new RTCSessionDescription(message.offer));
+    //       const answer = await pc.createAnswer();
+    //       await pc.setLocalDescription(answer);
+    //       signalingChannel.send({ answer: answer });
+    //     }
+    //   });
+    //   signalingChannel.send({ offer: offer });
+    // }
+  }
 });
 
 function createHashableUrl(url) {

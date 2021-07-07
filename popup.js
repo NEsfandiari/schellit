@@ -6,6 +6,8 @@ const urlListContainer = document.querySelector('.container-urlList');
 const signUp = document.querySelector('#signup');
 const logout = document.querySelector('#logout');
 const syncMatch = document.querySelector('#syncMatch');
+const hangUp = document.querySelector('#hangup');
+const videochatContainer = document.querySelector('.container-videochat');
 // ================
 // BOOT LOGIC
 // ================
@@ -99,6 +101,7 @@ submit.addEventListener('click', onUrlSubmit);
 signUp.addEventListener('click', onSignup);
 logout.addEventListener('click', onLogout);
 syncMatch.addEventListener('click', onSyncMatch);
+hangUp.addEventListener('click', onHangUp);
 
 async function onUrlSubmit() {
   const user = await getCurrentUser();
@@ -171,64 +174,103 @@ function onLogout() {
   });
 }
 
-function onSyncMatch() {
+let pc = null;
+let localStream = null;
+let remoteStream = null;
+let roomId = null;
+
+async function onSyncMatch() {
   if (!syncMatch.classList.contains('faded')) {
     console.log('WEB RTC Start');
     const constraints = {
       video: true,
       audio: true,
     };
-    navigator.mediaDevices
-      .getUserMedia(constraints)
-      .then((stream) => {
-        console.log(
-          'Got MediaStream:',
-          stream,
-          '\n',
-          'Tracks',
-          stream.getTracks()
-        );
-        const localVideoEl = document.querySelector('#localVideo');
-        localVideoEl.classList.toggle('hidden');
-        const signalingChannel = new SignalingChannel();
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log(
+      'Got MediaStream:',
+      localStream,
+      '\n',
+      'Tracks',
+      localStream.getTracks()
+    );
 
-        const configuration = {};
-        const pc = new RTCPeerConnection(configuration);
-        for (const track of stream.getTracks()) {
-          pc.addTrack(track, stream);
-        }
-        pc.createOffer().then((offer) => {
-          return pc.setLocalDescription(offer);
-        });
-        pc.ontrack = ({ track, streams }) => {
-          const remoteVideoEl = document.querySelector('#remoteVideo');
-          remoteVideoEl.srcObject = streams[0];
-        };
+    videochatContainer.classList.toggle('hidden');
+    const localVideoEl = document.querySelector('#localVideo');
+    localVideoEl.srcObject = localStream;
+    const remoteVideoEl = document.querySelector('#remoteVideo');
 
-        remoteVideoEl.srcObject = stream;
-      })
-      .catch((error) => {
-        console.error('Error accessing media devices.', error);
-      });
+    const configuration = {
+      // Public Google server for testing
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+    pc = new RTCPeerConnection(configuration);
+    registerPeerConnectionListeners(pc);
+
+    for (const track of localStream.getTracks()) {
+      pc.addTrack(track, localStream);
+    }
+    pc.createOffer().then((offer) => {
+      pc.setLocalDescription(offer);
+    });
+    pc.ontrack = ({ track, streams }) => {
+      remoteVideoEl.srcObject = streams[0];
+    };
   }
 }
 
-async function makeCall(pc) {
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  signalingChannel.addEventListener('message', async (message) => {
-    if (message.answer) {
-      const remoteDesc = new RTCSessionDescription(message.answer);
-      await pc.setRemoteDescription(remoteDesc);
-    }
-    if (message.offer) {
-      pc.setRemoteDescription(new RTCSessionDescription(message.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      signalingChannel.send({ answer: answer });
-    }
+async function onHangUp(e) {
+  const tracks = document.querySelector('#localVideo').srcObject.getTracks();
+  tracks.forEach((track) => {
+    track.stop();
   });
-  signalingChannel.send({ offer: offer });
+
+  if (remoteStream) {
+    remoteStream.getTracks().forEach((track) => track.stop());
+  }
+
+  if (pc) {
+    pc.close();
+  }
+
+  document.querySelector('#localVideo').srcObject = null;
+  document.querySelector('#remoteVideo').srcObject = null;
+  videochatContainer.classList.toggle('hidden');
+
+  // Delete room on hangup
+  if (roomId) {
+    const db = firebase.firestore();
+    const roomRef = db.collection('rooms').doc(roomId);
+    const calleeCandidates = await roomRef.collection('calleeCandidates').get();
+    calleeCandidates.forEach(async (candidate) => {
+      await candidate.delete();
+    });
+    const callerCandidates = await roomRef.collection('callerCandidates').get();
+    callerCandidates.forEach(async (candidate) => {
+      await candidate.delete();
+    });
+    await roomRef.delete();
+  }
+
+  document.location.reload(true);
+}
+
+function registerPeerConnectionListeners(pc) {
+  pc.addEventListener('icegatheringstatechange', () => {
+    console.log(`ICE gathering state changed: ${pc.iceGatheringState}`);
+  });
+
+  pc.addEventListener('connectionstatechange', () => {
+    console.log(`Connection state change: ${pc.connectionState}`);
+  });
+
+  pc.addEventListener('signalingstatechange', () => {
+    console.log(`Signaling state change: ${pc.signalingState}`);
+  });
+
+  pc.addEventListener('iceconnectionstatechange ', () => {
+    console.log(`ICE connection state change: ${pc.iceConnectionState}`);
+  });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

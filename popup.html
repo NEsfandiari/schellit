@@ -19,22 +19,19 @@
       <button class="faded" id="syncMatch">Match Now</button>
       <button class="hidden" id="logout">Logout</button>
     </div>
-    <div class="container-videos">
-    <video
-      id="localVideo"
-      class="hidden"
-      autoplay
-      playsinline
-      controls="false"
-    ></video>
-    <video
-      id="remoteVideo"
-      class="hidden"
-      autoplay
-      controls
-      playsinline
-    ></video>
-    <div>
+    <div class="container-videochat hidden">
+      <div class="container-videos">
+        <video id="localVideo" autoplay playsinline controls="false"></video>
+        <video
+          id="remoteVideo"
+          class="hidden"
+          autoplay
+          controls
+          playsinline
+        ></video>
+      </div>
+      <button id="hangup">Hang Up</button>
+    </div>
     <script src="popup.js" type="module"></script>
   </body>
 </html>
