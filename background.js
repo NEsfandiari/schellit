@@ -164,13 +164,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (message === 'join room') {
-    const { offer, url, pc } = request;
+    const { offer, pc } = request;
+    console.log({ previousActive });
+    const { hashableUrl, url } = previousActive;
     db.ref(`urls/active/${hashableUrl}/room`)
       .get()
       .then((snapshot) => {
         const room = snapshot.val();
         if (!room) {
-          const newRoom = db.ref(`urls/active/${hashableUrl}/room`).set({
+          db.ref(`urls/active/${hashableUrl}/room`).set({
             offer,
             url,
             pc,
@@ -192,13 +194,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               }
             }
           );
-          sendResponse({ message: 'you are the caller!' });
+          sendResponse({ message: 'you are the caller!', role: 'caller' });
         } else {
           sendResponse({
             message: 'you are the responder!',
+            role: 'responder',
           });
         }
       });
+    return true;
+  }
+
+  if (message === 'leave room') {
+    const { role } = request;
+    const { hashableUrl } = previousActive;
+    const updates = {};
+    updates[`urls/active/${hashableUrl}/room`] = null;
+    db.ref().update(updates);
   }
 });
 
@@ -229,6 +241,7 @@ function updateProfileMatches(user1, user2, url) {
 }
 
 db.ref('urls/active/').on('child_added', (data) => {
+  console.log(data.key);
   if (data.key === previousActive?.hashableUrl) {
     chrome.runtime.sendMessage({ message: 'sync available' });
   }

@@ -178,7 +178,7 @@ function onLogout() {
 let pc = null;
 let localStream = null;
 let remoteStream = null;
-let roomId = null;
+let role = null;
 
 async function onSyncMatch() {
   if (!syncMatch.classList.contains('faded')) {
@@ -214,7 +214,9 @@ async function onSyncMatch() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    chrome.runtime.sendMessage({ offer, pc, message: 'join room' });
+    chrome.runtime.sendMessage({ offer, pc, message: 'join room' }, (res) => {
+      role = res.role;
+    });
 
     pc.ontrack = ({ track, streams }) => {
       remoteVideoEl.srcObject = streams[0];
@@ -241,19 +243,7 @@ async function onHangUp(e) {
   videochatContainer.classList.toggle('hidden');
 
   // Delete room on hangup
-  if (roomId) {
-    // const db = firebase.firestore();
-    // const roomRef = db.collection('rooms').doc(roomId);
-    // const calleeCandidates = await roomRef.collection('calleeCandidates').get();
-    // calleeCandidates.forEach(async (candidate) => {
-    //   await candidate.delete();
-    // });
-    // const callerCandidates = await roomRef.collection('callerCandidates').get();
-    // callerCandidates.forEach(async (candidate) => {
-    //   await candidate.delete();
-    // });
-    // await roomRef.delete();
-  }
+  chrome.runtime.sendMessage({ role, pc, message: 'leave room' });
 }
 
 function registerPeerConnectionListeners(pc) {
@@ -280,3 +270,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     syncMatch.classList.toggle('faded');
   }
 });
+
+window.onunload = () => {
+  chrome.runtime.sendMessage({ message: 'leave room' });
+};
