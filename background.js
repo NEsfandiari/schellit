@@ -7,10 +7,10 @@ self.importScripts(
 const firebaseConfig = {
   apiKey: 'AIzaSyDMsuM8d04SYP3ZNz6y0a8aqub2ihvOwvA',
   authDomain: 'schellit.firebaseapp.com',
+  databaseURL: 'https://schellit-default-rtdb.firebaseio.com',
   projectId: 'schellit',
   storageBucket: 'schellit.appspot.com',
   messagingSenderId: '241007919342',
-  databaseURL: 'https://schellit-default-rtdb.firebaseio.com',
   appId: '1:241007919342:web:33b3d0a77a7552d9f1b3ff',
   measurementId: 'G-B3S8BHVZPD',
   clientId:
@@ -30,8 +30,8 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('From the Service Worker');
 });
 
-chrome.identity.onSignInChanged.addListener((thing) => {
-  console.log(thing);
+chrome.identity.onSignInChanged.addListener((status) => {
+  console.log({ status });
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -164,22 +164,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (message === 'join room') {
-    // async function makeCall(pc) {
-    //   await pc.setLocalDescription(offer);
-    //   signalingChannel.addEventListener('message', async (message) => {
-    //     if (message.answer) {
-    //       const remoteDesc = new RTCSessionDescription(message.answer);
-    //       await pc.setRemoteDescription(remoteDesc);
-    //     }
-    //     if (message.offer) {
-    //       pc.setRemoteDescription(new RTCSessionDescription(message.offer));
-    //       const answer = await pc.createAnswer();
-    //       await pc.setLocalDescription(answer);
-    //       signalingChannel.send({ answer: answer });
-    //     }
-    //   });
-    //   signalingChannel.send({ offer: offer });
-    // }
+    const { offer, url, pc } = request;
+    db.ref(`urls/active/${hashableUrl}/room`)
+      .get()
+      .then((snapshot) => {
+        const room = snapshot.val();
+        if (!room) {
+          const newRoom = db.ref(`urls/active/${hashableUrl}/room`).set({
+            offer,
+            url,
+            pc,
+          });
+          db.ref(`urls/active/${hashableUrl}/room/response`).on(
+            'child_added',
+            async (data) => {
+              if (message.answer) {
+                const remoteDesc = new RTCSessionDescription(message.answer);
+                await pc.setRemoteDescription(remoteDesc);
+              }
+              if (message.offer) {
+                pc.setRemoteDescription(
+                  new RTCSessionDescription(message.offer)
+                );
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                signalingChannel.send({ answer: answer });
+              }
+            }
+          );
+          sendResponse({ message: 'you are the caller!' });
+        } else {
+          sendResponse({
+            message: 'you are the responder!',
+          });
+        }
+      });
   }
 });
 

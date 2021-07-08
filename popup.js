@@ -19,6 +19,7 @@ async function setUrlBar() {
   const shortenedUrl = shrinkUrl(tab.url);
   const user = await getCurrentUser();
   urlBar.setAttribute('value', shortenedUrl);
+
   chrome.runtime.sendMessage(
     { message: 'check active tab', tab, user, activeUrl: shortenedUrl },
     (res) => {
@@ -210,9 +211,11 @@ async function onSyncMatch() {
     for (const track of localStream.getTracks()) {
       pc.addTrack(track, localStream);
     }
-    pc.createOffer().then((offer) => {
-      pc.setLocalDescription(offer);
-    });
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    chrome.runtime.sendMessage({ offer, pc, message: 'join room' });
+
     pc.ontrack = ({ track, streams }) => {
       remoteVideoEl.srcObject = streams[0];
     };
@@ -239,20 +242,18 @@ async function onHangUp(e) {
 
   // Delete room on hangup
   if (roomId) {
-    const db = firebase.firestore();
-    const roomRef = db.collection('rooms').doc(roomId);
-    const calleeCandidates = await roomRef.collection('calleeCandidates').get();
-    calleeCandidates.forEach(async (candidate) => {
-      await candidate.delete();
-    });
-    const callerCandidates = await roomRef.collection('callerCandidates').get();
-    callerCandidates.forEach(async (candidate) => {
-      await candidate.delete();
-    });
-    await roomRef.delete();
+    // const db = firebase.firestore();
+    // const roomRef = db.collection('rooms').doc(roomId);
+    // const calleeCandidates = await roomRef.collection('calleeCandidates').get();
+    // calleeCandidates.forEach(async (candidate) => {
+    //   await candidate.delete();
+    // });
+    // const callerCandidates = await roomRef.collection('callerCandidates').get();
+    // callerCandidates.forEach(async (candidate) => {
+    //   await candidate.delete();
+    // });
+    // await roomRef.delete();
   }
-
-  document.location.reload(true);
 }
 
 function registerPeerConnectionListeners(pc) {

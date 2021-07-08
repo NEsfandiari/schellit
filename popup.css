@@ -46,7 +46,7 @@ button {
   border: none;
   border-radius: 2px;
   box-shadow: 0 0 0 2px white, 0 0 0 4px black;
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
 button:hover {
