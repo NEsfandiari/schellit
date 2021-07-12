@@ -164,34 +164,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (message === 'join room') {
-    const { offer, pc } = request;
-    console.log({ previousActive });
     const { hashableUrl, url } = previousActive;
+    db.ref(`urls/active/${hashableUrl}/room`).on(
+      'child_added',
+      async (data) => {
+        if (data.key === 'answer') {
+          chrome.runtime.sendMessage({
+            message: 'make remote desc',
+            data: data.val(),
+          });
+        } else if (data.key === 'offer') {
+          chrome.runtime.sendMessage(
+            {
+              message: 'create answer',
+              data: data.val(),
+            },
+            ({ answer }) =>
+              db.ref(`urls/active/${hashableUrl}/room/answer`).set(answer)
+          );
+        }
+      }
+    );
     db.ref(`urls/active/${hashableUrl}/room`)
       .get()
       .then((snapshot) => {
         const room = snapshot.val();
         if (!room) {
-          db.ref(`urls/active/${hashableUrl}/room`).set({
-            offer,
-            url,
-            pc,
-          });
-          db.ref(`urls/active/${hashableUrl}/room/response`).on(
-            'child_added',
-            async (data) => {
-              if (message.answer) {
-                const remoteDesc = new RTCSessionDescription(message.answer);
-                await pc.setRemoteDescription(remoteDesc);
-              }
-              if (message.offer) {
-                pc.setRemoteDescription(
-                  new RTCSessionDescription(message.offer)
-                );
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                signalingChannel.send({ answer: answer });
-              }
+          chrome.runtime.sendMessage(
+            { message: 'create offer' },
+            ({ offer }) => {
+              db.ref(`urls/active/${hashableUrl}/room`).set({
+                offer,
+                url,
+              });
             }
           );
           sendResponse({ message: 'you are the caller!', role: 'caller' });

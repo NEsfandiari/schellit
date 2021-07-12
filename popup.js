@@ -188,6 +188,7 @@ async function onSyncMatch() {
       audio: true,
     };
     localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    remoteStream = new MediaStream();
     console.log(
       'Got MediaStream:',
       localStream,
@@ -198,8 +199,9 @@ async function onSyncMatch() {
 
     videochatContainer.classList.toggle('hidden');
     const localVideoEl = document.querySelector('#localVideo');
-    localVideoEl.srcObject = localStream;
     const remoteVideoEl = document.querySelector('#remoteVideo');
+    localVideoEl.srcObject = localStream;
+    remoteVideoEl.srcObject = remoteStream;
 
     const configuration = {
       // Public Google server for testing
@@ -207,20 +209,23 @@ async function onSyncMatch() {
     };
     pc = new RTCPeerConnection(configuration);
     registerPeerConnectionListeners(pc);
-
     for (const track of localStream.getTracks()) {
       pc.addTrack(track, localStream);
     }
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    chrome.runtime.sendMessage({ offer, pc, message: 'join room' }, (res) => {
+    chrome.runtime.sendMessage({ offer, message: 'join room' }, (res) => {
       role = res.role;
     });
 
-    pc.ontrack = ({ track, streams }) => {
-      remoteVideoEl.srcObject = streams[0];
-    };
+    pc.addEventListener('track', (event) => {
+      console.log('Got remote track:', event.streams[0]);
+      event.streams[0].getTracks().forEach((track) => {
+        console.log('Add a track to the remoteStream:', track);
+        remoteStream.addTrack(track);
+      });
+    });
   }
 }
 
@@ -268,6 +273,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const { message } = request;
   if (message === 'sync available' && syncMatch.classList.contains('faded')) {
     syncMatch.classList.toggle('faded');
+  }
+
+  if (message === 'make remote desc') {
+    const remoteDesc = new RTCSessionDescription(data);
+    pc.setRemoteDescription(remoteDesc);
+  }
+
+  if (message === 'make offer') {
+    pc.createOffer().then((offer) => {
+      pc.setLocalDescription(offer);
+      sendResponse({ offer });
+    });
+    return true;
+  }
+
+  if (message === 'make answer') {
+    pc.createAnswer().then((answer) => {
+      pc.setLocalDescription(answer);
+      sendResponse({ answer });
+    });
+    return true;
   }
 });
 
